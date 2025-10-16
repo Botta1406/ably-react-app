@@ -178,25 +178,51 @@ function App() {
     }
   }
 
-  const handleInputChange = (e) => {
+  const handleInputChange = async (e) => {
     setMessageText(e.target.value)
 
-    // Send typing indicator
-    if (ably) {
-      const channel = ably.channels.get('chat')
-
+    // Send typing indicator to backend
+    try {
       // Clear existing timeout
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current)
       }
 
-      // Publish typing start
-      channel.publish('typing', { username, isTyping: true })
+      // Send typing start to backend
+      await fetch('http://localhost:3001/api/typing', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          username,
+          isTyping: true
+        })
+      })
 
       // Set timeout to stop typing indicator
-      typingTimeoutRef.current = setTimeout(() => {
-        channel.publish('typing', { username, isTyping: false })
-      }, 1000)
+      typingTimeoutRef.current = setTimeout(async () => {
+        await fetch('http://localhost:3001/api/typing', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            username,
+            isTyping: false
+          })
+        })
+      }, 5000)
+    } catch (error) {
+      console.error('Failed to send typing indicator:', error)
+      // Fallback to direct Ably if backend is unavailable
+      if (ably) {
+        const channel = ably.channels.get('chat')
+        channel.publish('typing', { username, isTyping: true })
+        typingTimeoutRef.current = setTimeout(() => {
+          channel.publish('typing', { username, isTyping: false })
+        }, 5000)
+      }
     }
   }
 
@@ -224,11 +250,26 @@ function App() {
       }
     ])
 
+    // Stop typing indicator via backend
+    try {
+      await fetch('http://localhost:3001/api/typing', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          username,
+          isTyping: false
+        })
+      })
+    } catch (error) {
+      console.error('Failed to stop typing indicator:', error)
+    }
+
     // Publish to Ably for other users
     if (ably && isConnected) {
       try {
         const channel = ably.channels.get('chat')
-        await channel.publish('typing', { username, isTyping: false })
         await channel.publish('chat-message', message)
         console.log('✅ Message published to Ably:', message)
       } catch (error) {

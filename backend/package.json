@@ -1,0 +1,17 @@
+{
+  "name": "ably-chat-backend",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Backend server for Ably chat application",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "ably": "^2.14.0",
+    "express": "^4.21.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7"
+  }
+}
